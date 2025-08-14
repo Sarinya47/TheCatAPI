@@ -1,11 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.dogcat_api_app">
+    package="com.example.dog_api_app">
 
     <!-- สิทธิ์อนุญาตใช้งาน Internet -->
     <uses-permission android:name="android.permission.INTERNET"/>
 
     <application
-        android:label="dogcat_api_app"
+        android:label="dog_api_app"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

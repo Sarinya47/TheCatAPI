@@ -2,142 +2,141 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-// ===== MODEL =====
-class Animal {
+class Dog {
   final String imageUrl;
-  final String name;
+  final String breedName;
 
-  Animal({required this.imageUrl, required this.name});
+  Dog({required this.imageUrl, required this.breedName});
 }
 
-// ===== SERVICE =====
-class AnimalService {
-  // fallback list สำหรับแมว
-  static const List<String> fallbackCats = [
-    "https://cdn2.thecatapi.com/images/1pd.jpg",
-    "https://cdn2.thecatapi.com/images/24n.jpg",
-    "https://cdn2.thecatapi.com/images/agm.jpg",
-    "https://cdn2.thecatapi.com/images/ak0.jpg",
-    "https://cdn2.thecatapi.com/images/c6r.jpg",
-    "https://cdn2.thecatapi.com/images/cd1.jpg",
-    "https://cdn2.thecatapi.com/images/cqm.jpg",
-    "https://cdn2.thecatapi.com/images/MTg1NjkxNQ.jpg",
-    "https://cdn2.thecatapi.com/images/OhTkBTPnD.jpg",
-    "https://cdn2.thecatapi.com/images/1bFFj7N5c.jpg",
-  ];
+class DogService {
+  static const String fallbackImage =
+      'https://via.placeholder.com/400x200.png?text=No+Image';
 
-  // ===== FETCH CATS =====
-  static Future<List<Animal>> fetchCats() async {
-    final url = Uri.parse('https://api.thecatapi.com/v1/images/search?limit=10');
-    try {
-      final res = await http.get(url, headers: {
-        'x-api-key': 'live_KevgJglE3tgGMYa3sq8ABxzW1td5h71KXKZJv9zIA9PY6RHJnOuNmx07BBNi9FAh',
-      });
-
-      if (res.statusCode == 200) {
-        final List data = json.decode(res.body);
-        if (data.isEmpty) throw Exception("Empty data");
-        return data.map((e) => Animal(imageUrl: e['url'], name: "Cat")).toList();
-      } else {
-        // fallback ถ้า API ใช้ไม่ได้
-        return fallbackCats.map((url) => Animal(imageUrl: url, name: "Cat")).toList();
-      }
-    } catch (e) {
-      // fallback ถ้าเกิด exception
-      return fallbackCats.map((url) => Animal(imageUrl: url, name: "Cat")).toList();
-    }
-  }
-
-  // ===== FETCH DOGS =====
-  static Future<List<Animal>> fetchDogs() async {
-    final url = Uri.parse('https://dog.ceo/api/breeds/image/random/10');
+  static Future<List<Dog>> fetchDogs() async {
+    final url = Uri.parse('https://dog.ceo/api/breeds/image/random/50');
     try {
       final res = await http.get(url);
-
       if (res.statusCode == 200) {
         final data = json.decode(res.body);
         final List images = data['message'];
-        return images.map((e) => Animal(imageUrl: e, name: "Dog")).toList();
+
+        return images.map<Dog>((imgUrl) {
+          final uriParts = imgUrl.split('/');
+          String breedName = 'Unknown';
+          if (uriParts.length > 4) {
+            breedName = uriParts[4].replaceAll('-', ' ');
+            breedName = breedName[0].toUpperCase() + breedName.substring(1);
+          }
+          return Dog(imageUrl: imgUrl, breedName: breedName);
+        }).toList();
       } else {
-        // fallback dog
-        return [
-          Animal(imageUrl: "https://images.dog.ceo/breeds/hound-afghan/n02088094_1003.jpg", name: "Dog"),
-          Animal(imageUrl: "https://images.dog.ceo/breeds/hound-basset/n02088238_1007.jpg", name: "Dog"),
-          Animal(imageUrl: "https://images.dog.ceo/breeds/hound-blood/n02088466_10184.jpg", name: "Dog"),
-        ];
+        return [];
       }
     } catch (e) {
-      return [
-        Animal(imageUrl: "https://images.dog.ceo/breeds/hound-afghan/n02088094_1003.jpg", name: "Dog"),
-        Animal(imageUrl: "https://images.dog.ceo/breeds/hound-basset/n02088238_1007.jpg", name: "Dog"),
-        Animal(imageUrl: "https://images.dog.ceo/breeds/hound-blood/n02088466_10184.jpg", name: "Dog"),
-      ];
+      return [];
     }
   }
 }
 
-// ===== SCREEN =====
-class AnimalScreen extends StatefulWidget {
-  const AnimalScreen({super.key});
+class DogScreen extends StatefulWidget {
+  const DogScreen({super.key});
 
   @override
-  State<AnimalScreen> createState() => _AnimalScreenState();
+  State<DogScreen> createState() => _DogScreenState();
 }
 
-class _AnimalScreenState extends State<AnimalScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _DogScreenState extends State<DogScreen> {
+  List<Dog> allDogs = [];
+  List<Dog> filteredDogs = [];
+  bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    loadDogs();
+  }
+
+  Future<void> loadDogs() async {
+    final dogs = await DogService.fetchDogs();
+    setState(() {
+      allDogs = dogs;
+      filteredDogs = dogs;
+      isLoading = false;
+    });
+  }
+
+  void filterDogs(String query) {
+    final lowerQuery = query.toLowerCase();
+    setState(() {
+      filteredDogs = allDogs.where((dog) {
+        return dog.breedName.toLowerCase().contains(lowerQuery);
+      }).toList();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
-        title: const Text("Dogs & Cats"),
+        title: const Text("Dog Breeds"),
         centerTitle: true,
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(icon: Icon(Icons.pets), text: "Dogs"),
-            Tab(icon: Icon(Icons.pets_outlined), text: "Cats"),
-          ],
-        ),
+        backgroundColor: Colors.teal,
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildAnimalList(AnimalService.fetchDogs),
-          _buildAnimalList(AnimalService.fetchCats),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAnimalList(Future<List<Animal>> Function() fetchFunction) {
-    return FutureBuilder<List<Animal>>(
-      future: fetchFunction(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-        if (snapshot.hasError) return Center(child: Text("Error: ${snapshot.error}"));
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: snapshot.data!.length,
-          itemBuilder: (context, index) => AnimalCard(animal: snapshot.data![index]),
-        );
-      },
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: TextField(
+                    decoration: InputDecoration(
+                      hintText: 'Search breed...',
+                      prefixIcon: const Icon(Icons.search),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    onChanged: filterDogs,
+                  ),
+                ),
+                Expanded(
+                  child: filteredDogs.isEmpty
+                      ? const Center(child: Text("No breeds found"))
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          itemCount: filteredDogs.length,
+                          itemBuilder: (context, index) {
+                            final dog = filteredDogs[index];
+                            return GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => DogDetailScreen(dog: dog),
+                                  ),
+                                );
+                              },
+                              child: DogCard(dog: dog),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
     );
   }
 }
 
-// ===== CARD =====
-class AnimalCard extends StatelessWidget {
-  final Animal animal;
+class DogCard extends StatelessWidget {
+  final Dog dog;
 
-  const AnimalCard({super.key, required this.animal});
+  const DogCard({super.key, required this.dog});
 
   @override
   Widget build(BuildContext context) {
@@ -145,28 +144,38 @@ class AnimalCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0,3))],
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 5)),
+        ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Image.network(
-              animal.imageUrl,
-              height: 200,
-              width: double.infinity,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
-                color: Colors.grey[200],
-                height: 200,
-                child: const Icon(Icons.error, color: Colors.red),
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Image.network(
+                dog.imageUrl.isNotEmpty ? dog.imageUrl : DogService.fallbackImage,
+                fit: BoxFit.cover,
+                alignment: Alignment.center,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  color: Colors.grey[300],
+                  child: const Icon(Icons.error, color: Colors.red),
+                ),
               ),
             ),
             Padding(
               padding: const EdgeInsets.all(16),
-              child: Text(animal.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+              child: Text(
+                dog.breedName,
+                style: const TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+              ),
             ),
           ],
         ),
@@ -175,6 +184,40 @@ class AnimalCard extends StatelessWidget {
   }
 }
 
+class DogDetailScreen extends StatelessWidget {
+  final Dog dog;
+
+  const DogDetailScreen({super.key, required this.dog});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F5F5),
+      appBar: AppBar(
+        title: Text(dog.breedName),
+        backgroundColor: Colors.teal,
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: AspectRatio(
+            aspectRatio: 16 / 9,
+            child: Image.network(
+              dog.imageUrl.isNotEmpty ? dog.imageUrl : DogService.fallbackImage,
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+              errorBuilder: (context, error, stackTrace) => Container(
+                color: Colors.grey[300],
+                child: const Icon(Icons.error, color: Colors.red),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 void main() {
-  runApp(const MaterialApp(home: AnimalScreen(), debugShowCheckedModeBanner: false));
+  runApp(const MaterialApp(home: DogScreen(), debugShowCheckedModeBanner: false));
 }

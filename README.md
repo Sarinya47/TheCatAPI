@@ -1,3 +1,3 @@
-# dogcat_api_app
+# dog_api_app
 
 A new Flutter project.
