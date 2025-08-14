@@ -191,7 +191,7 @@ class _DogScreenState extends State<DogScreen> {
       theme: isDarkMode ? ThemeData.dark() : ThemeData.light(),
       home: Scaffold(
         appBar: AppBar(
-          title: const Text('สายพันธุ์สุนัข'),
+          title: const Text('Dog Breed'),
           centerTitle: true,
           backgroundColor: Colors.teal,
           actions: [
